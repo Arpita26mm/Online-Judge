@@ -1,0 +1,72 @@
+import { createContext, useContext, useState, useEffect } from "react";
+
+export const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [user, setUser] = useState("");
+  const authorizationToken = `Bearer ${token}`;
+  const storeTokenInLS = (serverToken) => {
+    //                                            now this has become a reusable func...koi bi ye func ko call krega to local storage me token sdd ho jyga
+    return localStorage.setItem("token", serverToken);
+  };
+
+  let isLoggedIn = !!token; // True/False
+  console.log("is logged in ", isLoggedIn);
+
+  //tackling logout functionality
+  const LogoutUser = () => {
+    setToken("");
+    return localStorage.removeItem("token");
+  };
+
+  //JWT Authentication - to get currently loggedIn user's data
+
+  const userAuthentication = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/user", {
+        method: "GET",
+        headers: {
+          Authorization: authorizationToken,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json(); //converting data to json
+        console.log("user Data", data.userData);
+        setUser(data.userData);
+      }
+    } catch (error) {
+      console.log("Error fetching user data");
+    }
+  };
+
+  useEffect(() => {
+    userAuthentication();
+  }, []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        isLoggedIn,
+        storeTokenInLS,
+        LogoutUser,
+        user,
+        authorizationToken,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+//main.jsx is the chidren -->So wrap it inside this AuthProvider--> aur fir vha s sbkoi is func ko access kr skte
+
+//delivery boy...custom hook=useAuth...useContext hook used
+
+export const useAuth = () => {
+  const authContextValue = useContext(AuthContext);
+  if (!authContextValue) {
+    throw new Error("useAuth used outside of the provider");
+  }
+  return authContextValue;
+};
